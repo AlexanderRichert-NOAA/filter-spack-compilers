@@ -2,7 +2,9 @@
 
 import argparse
 import os
+import re
 import sys
+
 from ruamel.yaml import YAML
 
 parser = argparse.ArgumentParser(
@@ -13,8 +15,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('yamlfile', help='Input YAML file (compilers.yaml or spack.yaml)')
 parser.add_argument('compilerspecs', nargs='+', help='Compiler specs to keep/remove')
 inc_or_exc_group = parser.add_mutually_exclusive_group(required=True)
-inc_or_exc_group.add_argument('--remove', action='store_true')
-inc_or_exc_group.add_argument('--keep-only', action='store_true')
+inc_or_exc_group.add_argument('--remove', action='store_true', help='Remove specified compiler specs')
+inc_or_exc_group.add_argument('--keep-only', action='store_true', help='Remove all compiler specs except those specified')
+inc_or_exc_group.add_argument('--keep-only-this-version', action='store_true', help='Remove all compiler specs of the same name(s) specified (i.e., have only one version of intel)')
 args = parser.parse_args()
 
 yaml = YAML(typ='rt')
@@ -29,10 +32,17 @@ else:
 
 n_compilers = len(yaml_data['compilers'])
 for i in range(n_compilers-1,-1,-1):
-  if (yaml_data['compilers'][i]['compiler']['spec'] in args.compilerspecs) and args.remove:
+  compiler_spec = yaml_data['compilers'][i]['compiler']['spec']
+  if args.keep_only_this_version:
+    names = [re.sub('@.*', '', x) for x in args.compilerspecs]
+    compiler_name = re.sub('@.*', '', yaml_data['compilers'][i]['compiler']['spec'])
+    if (compiler_name in names) and (compiler_spec not in args.compilerspecs):
+      del(yaml_data['compilers'][i])
+    continue
+  if (compiler_spec in args.compilerspecs) and args.remove:
     del(yaml_data['compilers'][i])
     continue
-  if (yaml_data['compilers'][i]['compiler']['spec'] not in args.compilerspecs) and args.keep_only:
+  if (compiler_spec not in args.compilerspecs) and args.keep_only:
     del(yaml_data['compilers'][i])
 
 if 'spack' in raw_yaml_data.keys():
