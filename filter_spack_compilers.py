@@ -64,10 +64,18 @@ def load_yaml_file(filename, use_ruamel=False):
 
 def filter_compilers(yaml_data, args):
     """Filter compilers based on command line arguments."""
+
+    # In the future, `spack.spec.Spec("foo@1.2.3").satisfies("foo@1")` may provide
+    # a more robust way to match specs.
+
+    # Change "@=" to "@" to make sure we don't miss anything. For matching purposes
+    # we'll treat the two as equivalent.
+    args.compilerspecs = [x.replace("@=", "@") for x in args.compilerspecs]
+
     n_compilers = len(yaml_data['compilers'])
     
     for i in range(n_compilers-1, -1, -1):
-        compiler_spec = yaml_data['compilers'][i]['compiler']['spec']
+        compiler_spec = yaml_data['compilers'][i]['compiler']['spec'].replace("@=", "@")
         
         if args.keep_only_this_version:
             names = [re.sub('@.*', '', x) for x in args.compilerspecs]
